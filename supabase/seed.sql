@@ -1,0 +1,2 @@
+-- O Medcare não cria usuários ou medicamentos fictícios no banco.
+-- Dados de testes automatizados devem ser isolados em seus próprios cenários.

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Development Conventions"
+  short_description: "Project-aware standards for reliable code"
+  default_prompt: "Use $development-conventions to implement this change according to the repository's established engineering standards."
+
+policy:
+  allow_implicit_invocation: true

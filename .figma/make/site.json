@@ -1,0 +1,15 @@
+{
+  "title": "MedCare",
+  "description": "Organize and track medication routines with clear reminders and adherence insights, designed for elderly patients, caregivers, and families to ensure safe, simple medication management.",
+  "language": "pt-BR",
+  "icons": {
+    "icon": "/medcare-icon.svg"
+  },
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Backend Development Conventions"
+  short_description: "Safe conventions for APIs and services"
+  default_prompt: "Use $backend-development-conventions to implement this backend change with contract, data, security, and operational safeguards."
+
+policy:
+  allow_implicit_invocation: true
