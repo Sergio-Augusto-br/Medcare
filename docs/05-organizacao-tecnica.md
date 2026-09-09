@@ -67,6 +67,10 @@ flowchart LR
     RLS --> DATA[Dados da conta e da pessoa autorizada]
 ```
 
+O detalhamento dos módulos e suas relações está em
+[Arquitetura baseada em componentes](12-arquitetura-baseada-em-componentes.md), incluindo o
+diagrama de componentes do MedCare.
+
 ## Comandos
 
 | Comando                             | Finalidade                                        |

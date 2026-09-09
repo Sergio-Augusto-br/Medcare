@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { addDays, format, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link, useLocation } from "react-router-dom";
 import { FormNotice } from "@/features/auth/AuthLayout";
 import { usePatient } from "@/features/care/usePatient";
 import { userMessage } from "@/lib/errors";
 import DoseCard from "./DoseCard";
-import { fetchDoses, refreshOccurrences } from "./api";
-import { refreshNotifications } from "@/features/notifications/api";
+import { dailyRoutineFacade } from "./DailyRoutineFacade";
 import { adherenceSummary, dateInTimezone } from "./utils";
 
 export default function TodayPage() {
@@ -16,18 +15,12 @@ export default function TodayPage() {
   const successMessage = (location.state as { message?: string } | null)?.message;
   const canRead = can("history") || can("record") || can("manage");
   const canRecord = can("record") || can("manage");
+  const canManage = can("manage");
   const localDate = patient ? dateInTimezone(new Date(), patient.timezone) : "";
   const doses = useQuery({
     queryKey: ["doses", patient?.id, localDate],
     enabled: Boolean(patient && localDate && canRead),
-    queryFn: async () => {
-      const endDate = format(addDays(parseISO(localDate), 90), "yyyy-MM-dd");
-      if (can("manage")) {
-        await refreshOccurrences(patient!.id, localDate, endDate);
-        await refreshNotifications(patient!.id);
-      }
-      return fetchDoses(patient!.id, localDate);
-    },
+    queryFn: () => dailyRoutineFacade.loadToday(patient!.id, localDate, canManage),
   });
   const summary = adherenceSummary(doses.data ?? []);
   const queryError = patientError ?? doses.error;
@@ -93,9 +86,11 @@ export default function TodayPage() {
           <p className="account-muted">
             Adicione um medicamento ou aproveite um dia sem registros.
           </p>
-          <Link className="account-button" to="/app/medicamentos/novo">
-            Adicionar medicamento
-          </Link>
+          {canManage && (
+            <Link className="account-button" to="/app/medicamentos/novo">
+              Adicionar medicamento
+            </Link>
+          )}
         </section>
       )}
 

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { QueryCacheMediator } from "@/app/QueryCacheMediator";
 import { FormNotice } from "@/features/auth/AuthLayout";
 import { usePatient } from "@/features/care/usePatient";
 import { userMessage } from "@/lib/errors";
@@ -51,9 +52,11 @@ export default function MedicationListPage() {
   const archiveMutation = useMutation({
     mutationFn: (medication: MedicationRoutineRow) =>
       archiveMedicationRoutine(medication.id, medication.version),
-    onSuccess: async () => {
+    onSuccess: async (medicationId) => {
       setError(undefined);
-      await queryClient.invalidateQueries({ queryKey: ["medications", patient?.id] });
+      if (patient) {
+        await new QueryCacheMediator(queryClient).medicationChanged(patient.id, medicationId);
+      }
     },
     onError: (mutationError) => setError(userMessage(mutationError)),
   });

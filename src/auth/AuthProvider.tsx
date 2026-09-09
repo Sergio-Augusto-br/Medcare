@@ -1,9 +1,12 @@
 import type { Session } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
+import { QueryCacheMediator } from "@/app/QueryCacheMediator";
 import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(Boolean(supabase));
 
@@ -18,7 +21,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "SIGNED_OUT") new QueryCacheMediator(queryClient).sessionEnded();
       setSession(nextSession);
       setLoading(false);
     });
@@ -27,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   const value = useMemo(
     () => ({ session, user: session?.user ?? null, loading }),

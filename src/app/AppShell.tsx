@@ -14,6 +14,7 @@ export default function AppShell() {
   const navigate = useNavigate();
   const { standalone, canInstall, install } = useInstallPrompt();
   const [online, setOnline] = useState(navigator.onLine);
+  const [logoutError, setLogoutError] = useState<string>();
   const profile = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
@@ -45,7 +46,12 @@ export default function AppShell() {
   }, []);
 
   async function logout() {
-    await requireSupabase().auth.signOut();
+    setLogoutError(undefined);
+    const { error } = await requireSupabase().auth.signOut();
+    if (error) {
+      setLogoutError(userMessage(error));
+      return;
+    }
     navigate("/login", { replace: true });
   }
 
@@ -109,6 +115,11 @@ export default function AppShell() {
           <NavLink to="/app/perfil">Perfil</NavLink>
         </nav>
         <main id="main-content" className="medcare-app-content">
+          {logoutError && (
+            <p className="account-notice error" role="alert">
+              {logoutError}
+            </p>
+          )}
           {!online && (
             <p className="account-notice warning medcare-offline" role="status">
               Você está sem conexão. As telas já abertas continuam visíveis, e novas gravações

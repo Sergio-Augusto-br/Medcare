@@ -1,4 +1,5 @@
-import type { DoseOccurrenceRow, DoseStatus } from "@/types";
+import type { DoseStatus } from "@/types";
+import type { DoseOccurrence } from "./model";
 
 export function dateInTimezone(date: Date, timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -12,10 +13,10 @@ export function dateInTimezone(date: Date, timezone: string) {
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
-export function doseDisplayStatus(dose: DoseOccurrenceRow, now = new Date()) {
+export function doseDisplayStatus(dose: DoseOccurrence, now = new Date()) {
   if (dose.status === "taken") return "taken";
   if (dose.status === "not_taken") return "not_taken";
-  return new Date(dose.scheduled_at) < now ? "late" : "pending";
+  return new Date(dose.scheduledAt) < now ? "late" : "pending";
 }
 
 export const doseStatusLabels: Record<DoseStatus | "late", string> = {
@@ -25,7 +26,7 @@ export const doseStatusLabels: Record<DoseStatus | "late", string> = {
   not_taken: "Não tomada",
 };
 
-export function adherenceSummary(doses: DoseOccurrenceRow[]) {
+export function adherenceSummary(doses: DoseOccurrence[]) {
   const taken = doses.filter((dose) => dose.status === "taken").length;
   const notTaken = doses.filter((dose) => dose.status === "not_taken").length;
   const pending = doses.filter((dose) => dose.status === "pending").length;

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/auth/useAuth";
 import { usePatient } from "@/features/care/usePatient";
 import { FormNotice } from "@/features/auth/AuthLayout";
 import { userMessage } from "@/lib/errors";
@@ -11,12 +12,14 @@ import {
   refreshNotifications,
   snoozeReminder,
 } from "./api";
+import { browserNotificationAdapter } from "./BrowserNotificationAdapter";
 
 export default function NotificationsPage() {
+  const { user } = useAuth();
   const { patient, can } = usePatient();
   const queryClient = useQueryClient();
   const notifications = useQuery({
-    queryKey: ["notifications"],
+    queryKey: ["notifications", user?.id],
     queryFn: async () => {
       if (patient && can("manage")) await refreshNotifications(patient.id);
       return fetchNotifications();
@@ -28,42 +31,37 @@ export default function NotificationsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
   const snooze = useMutation({
-    mutationFn: ({ doseId, minutes }: { doseId: string; minutes: number }) =>
-      snoozeReminder(doseId, minutes),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    mutationFn: ({
+      doseId,
+      minutes,
+    }: {
+      notificationId: string;
+      doseId: string;
+      minutes: number;
+    }) => snoozeReminder(doseId, minutes),
+    onSuccess: (_result, variables) => {
+      browserNotificationAdapter.release(variables.notificationId);
+      return queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
   });
   useEffect(() => {
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
     for (const notification of notifications.data ?? []) {
       if (notification.resolved_at || notification.read_at) continue;
-      const storageKey = `medcare.browserNotification.${notification.id}`;
-      if (localStorage.getItem(storageKey)) continue;
-      const browserNotification = new Notification(notification.title, {
+      browserNotificationAdapter.showOnce({
+        id: notification.id,
+        title: notification.title,
         body: notification.body,
-        icon: "/medcare-icon.svg",
-        tag: notification.id,
+        path: notification.dose_id
+          ? `/app/doses/${notification.dose_id}`
+          : notification.kind === "invite"
+            ? "/app/convites"
+            : "/app/notificacoes",
       });
-      browserNotification.onclick = () => {
-        window.focus();
-        window.location.assign(
-          notification.dose_id
-            ? `/app/doses/${notification.dose_id}`
-            : notification.kind === "invite"
-              ? "/app/convites"
-              : "/app/notificacoes",
-        );
-      };
-      localStorage.setItem(storageKey, new Date().toISOString());
     }
   }, [notifications.data]);
   async function enableBrowserNotifications() {
-    if (!("Notification" in window)) return;
-    const permission = await Notification.requestPermission();
-    if (permission === "granted")
-      new Notification("MedCare", {
-        body: "Avisos ativados neste navegador.",
-        icon: "/medcare-icon.svg",
-      });
+    const permission = await browserNotificationAdapter.requestPermission();
+    if (permission === "granted") browserNotificationAdapter.showConfirmation();
   }
   const error = notifications.error ?? markRead.error ?? snooze.error;
   return (
@@ -76,15 +74,16 @@ export default function NotificationsPage() {
             Lembretes e alertas são resolvidos quando a dose recebe um registro.
           </p>
         </div>
-        {"Notification" in window && Notification.permission !== "granted" && (
-          <button
-            className="account-button secondary"
-            type="button"
-            onClick={() => void enableBrowserNotifications()}
-          >
-            Ativar no navegador
-          </button>
-        )}
+        {browserNotificationAdapter.isSupported() &&
+          browserNotificationAdapter.permission() !== "granted" && (
+            <button
+              className="account-button secondary"
+              type="button"
+              onClick={() => void enableBrowserNotifications()}
+            >
+              Ativar no navegador
+            </button>
+          )}
       </header>
       <FormNotice message={error ? userMessage(error) : undefined} />
       {notifications.isPending && <p className="account-notice">Atualizando notificações…</p>}
@@ -149,7 +148,13 @@ export default function NotificationsPage() {
                   <button
                     className="account-link"
                     type="button"
-                    onClick={() => snooze.mutate({ doseId: notification.dose_id!, minutes: 10 })}
+                    onClick={() =>
+                      snooze.mutate({
+                        notificationId: notification.id,
+                        doseId: notification.dose_id!,
+                        minutes: 10,
+                      })
+                    }
                   >
                     Lembrar em 10 min
                   </button>

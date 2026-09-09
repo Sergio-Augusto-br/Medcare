@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { DoseOccurrenceRow } from "@/types";
+import type { DoseOccurrence } from "./model";
 import { adherenceSummary, dateInTimezone, doseDisplayStatus } from "./utils";
 
-function dose(status: DoseOccurrenceRow["status"], scheduledAt = "2026-09-06T12:00:00Z") {
-  return { status, scheduled_at: scheduledAt } as DoseOccurrenceRow;
+function dose(status: DoseOccurrence["status"], scheduledAt = "2026-09-06T12:00:00Z") {
+  return { status, scheduledAt } as DoseOccurrence;
 }
 
 describe("estado e indicadores de doses", () => {

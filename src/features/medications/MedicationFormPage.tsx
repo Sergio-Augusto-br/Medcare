@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { QueryCacheMediator } from "@/app/QueryCacheMediator";
 import { FieldError, FormNotice } from "@/features/auth/AuthLayout";
+import { PatientPermissionSpecification } from "@/features/care/PatientPermissionSpecification";
 import { usePatient } from "@/features/care/usePatient";
 import { userMessage } from "@/lib/errors";
 import type { MedicationRoutineRow } from "@/types";
@@ -16,6 +17,7 @@ import {
   updateMedicationRoutine,
 } from "./api";
 import { medicationRoutineSchema, type MedicationRoutineValues } from "./schemas";
+import { routineDateStrategy } from "./RoutineDateStrategy";
 
 const weekdays = [
   { value: 0, short: "D", label: "Domingo" },
@@ -27,15 +29,11 @@ const weekdays = [
   { value: 6, short: "S", label: "Sábado" },
 ];
 
-function today() {
-  return format(new Date(), "yyyy-MM-dd");
-}
-
 function browserTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Manaus";
 }
 
-function initialValues(): MedicationRoutineValues {
+function initialValues(timezone = browserTimezone()): MedicationRoutineValues {
   return {
     name: "",
     strength: "",
@@ -45,9 +43,9 @@ function initialValues(): MedicationRoutineValues {
     instructions: "",
     times: [{ value: "08:00" }],
     weekdays: [0, 1, 2, 3, 4, 5, 6],
-    startDate: today(),
+    startDate: routineDateStrategy.today(timezone),
     endDate: "",
-    timezone: browserTimezone(),
+    timezone,
   };
 }
 
@@ -62,8 +60,11 @@ function medicationToValues(medication: MedicationRoutineRow): MedicationRoutine
     instructions: medication.instructions,
     times: schedule.times.map((time) => ({ value: time.slice(0, 5) })),
     weekdays: schedule.weekdays,
-    startDate: today(),
-    endDate: schedule.end_date && schedule.end_date >= today() ? schedule.end_date : "",
+    startDate: routineDateStrategy.today(schedule.timezone),
+    endDate:
+      schedule.end_date && schedule.end_date >= routineDateStrategy.today(schedule.timezone)
+        ? schedule.end_date
+        : "",
     timezone: schedule.timezone,
   };
 }
@@ -71,7 +72,14 @@ function medicationToValues(medication: MedicationRoutineRow): MedicationRoutine
 export default function MedicationFormPage() {
   const { medicationId } = useParams();
   const editing = Boolean(medicationId);
-  const { patient, isPending: patientPending, error: patientError, can } = usePatient();
+  const {
+    patient,
+    patients,
+    isPending: patientPending,
+    error: patientError,
+    selectPatient,
+  } = usePatient();
+  const permission = useMemo(() => new PatientPermissionSpecification(patients), [patients]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const form = useForm<MedicationRoutineValues>({
@@ -80,6 +88,7 @@ export default function MedicationFormPage() {
   });
   const times = useFieldArray({ control: form.control, name: "times" });
   const startDate = useWatch({ control: form.control, name: "startDate" });
+  const minimumDate = routineDateStrategy.today(patient?.timezone ?? browserTimezone());
 
   const medication = useQuery({
     queryKey: ["medication", medicationId],
@@ -90,6 +99,18 @@ export default function MedicationFormPage() {
   useEffect(() => {
     if (medication.data) form.reset(medicationToValues(medication.data));
   }, [form, medication.data]);
+
+  useEffect(() => {
+    if (!editing && patient && !form.formState.isDirty) {
+      form.reset(initialValues(patient.timezone));
+    }
+  }, [editing, form, patient]);
+
+  useEffect(() => {
+    if (medication.data && medication.data.patient_id !== patient?.id) {
+      selectPatient(medication.data.patient_id);
+    }
+  }, [medication.data, patient?.id, selectPatient]);
 
   const saveMutation = useMutation({
     mutationFn: async (values: MedicationRoutineValues) => {
@@ -102,8 +123,11 @@ export default function MedicationFormPage() {
         timezone: patient.timezone,
       });
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["medications", patient?.id] });
+    onSuccess: async (medicationId) => {
+      const patientId = medication.data?.patient_id ?? patient?.id;
+      if (patientId) {
+        await new QueryCacheMediator(queryClient).medicationChanged(patientId, medicationId);
+      }
       navigate("/app/medicamentos", {
         replace: true,
         state: {
@@ -120,8 +144,11 @@ export default function MedicationFormPage() {
       if (!medication.data) throw new Error("Medicamento não encontrado.");
       return archiveMedicationRoutine(medication.data.id, medication.data.version);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["medications", patient?.id] });
+    onSuccess: async (medicationId) => {
+      const patientId = medication.data?.patient_id ?? patient?.id;
+      if (patientId) {
+        await new QueryCacheMediator(queryClient).medicationChanged(patientId, medicationId);
+      }
       navigate("/app/medicamentos", {
         replace: true,
         state: { message: "Medicamento arquivado. O histórico foi preservado." },
@@ -143,6 +170,10 @@ export default function MedicationFormPage() {
   const loading = patientPending || (editing && medication.isPending);
   const queryError = patientError ?? medication.error;
   const mutationError = saveMutation.error ?? archiveMutation.error;
+  const resourcePatientId = medication.data?.patient_id ?? patient?.id;
+  const canManage = Boolean(
+    resourcePatientId && permission.isSatisfiedBy(resourcePatientId, "manage"),
+  );
 
   if (loading)
     return (
@@ -151,7 +182,7 @@ export default function MedicationFormPage() {
       </p>
     );
 
-  if (!can("manage"))
+  if (!canManage)
     return (
       <p className="account-notice warning">Você não possui permissão para alterar esta rotina.</p>
     );
@@ -368,7 +399,7 @@ export default function MedicationFormPage() {
                 <input
                   id="medication-start-date"
                   type="date"
-                  min={today()}
+                  min={minimumDate}
                   {...form.register("startDate")}
                 />
                 <FieldError message={form.formState.errors.startDate?.message} />
@@ -378,7 +409,7 @@ export default function MedicationFormPage() {
                 <input
                   id="medication-end-date"
                   type="date"
-                  min={startDate || today()}
+                  min={startDate || minimumDate}
                   {...form.register("endDate")}
                 />
                 <FieldError message={form.formState.errors.endDate?.message} />

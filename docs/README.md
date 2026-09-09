@@ -2,7 +2,7 @@
 
 Documentação funcional e técnica do projeto, mantida junto à implementação.
 
-**Atualizado em:** 06/09/2026.  
+**Atualizado em:** 09/09/2026.
 **Estágio:** PWA publicada em HTTPS e integrada ao Supabase remoto; validação manual de aceitação em andamento. O push com o app fechado ainda depende de um serviço externo.
 
 ## Visão rápida
@@ -13,19 +13,22 @@ A aplicação possui contas, preferências, medicamentos, doses, indicadores, no
 
 ## Índice e ordem de leitura
 
-| Documento                                                               | Conteúdo                                                                                 |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [01 — Visão geral e objetivos](01-visao-geral.md)                       | Contexto, problema, proposta, objetivo geral, objetivos específicos e limites do escopo. |
-| [02 — Personas e histórias de usuário](02-personas-e-historias.md)      | Público, personagens do protótipo, histórias e critérios de aceite propostos.            |
-| [03 — Funcionalidades e requisitos](03-funcionalidades-e-requisitos.md) | Catálogo funcional, atendimento atual e requisitos de qualidade propostos.               |
-| [04 — Contas e regras de negócio](04-contas-e-regras-de-negocio.md)     | Identidades, vínculos, permissões, doses e regras sugeridas para o desenvolvimento.      |
-| [05 — Organização técnica](05-organizacao-tecnica.md)                   | Ferramentas, estrutura atual, organização do trabalho e responsabilidades a definir.     |
-| [06 — Estado atual](06-estado-atual.md)                                 | Interações implementadas, simulações, limitações e lacunas verificadas no código.        |
-| [07 — Planejamento e decisões](07-planejamento-e-decisoes.md)           | Sequência de desenvolvimento sugerida, condições de entrega e decisões abertas.          |
-| [08 — Stack e arquitetura](08-stack-e-arquitetura.md)                   | Ferramentas aprovadas, decisões técnicas, modelo inicial e etapa em andamento.           |
-| [09 — Instalação e publicação](09-instalacao-e-publicacao.md)           | Teste móvel, PWA, requisitos de HTTPS, Supabase remoto e notificações push.              |
-| [10 — Roteiro de testes de aceitação](10-roteiro-testes-aceitacao.md)   | Casos manuais para celular e navegador, resultados esperados e modelo de report.         |
-| [11 — Configuração do time e GitHub](11-configuracao-time-e-github.md)  | Dependências, Supabase local/remoto, segurança e fluxo de versionamento.                 |
+| Documento                                                                           | Conteúdo                                                                                 |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [01 — Visão geral e objetivos](01-visao-geral.md)                                   | Contexto, problema, proposta, objetivo geral, objetivos específicos e limites do escopo. |
+| [02 — Personas e histórias de usuário](02-personas-e-historias.md)                  | Público, personagens do protótipo, histórias e critérios de aceite propostos.            |
+| [03 — Funcionalidades e requisitos](03-funcionalidades-e-requisitos.md)             | Catálogo funcional, atendimento atual e requisitos de qualidade propostos.               |
+| [04 — Contas e regras de negócio](04-contas-e-regras-de-negocio.md)                 | Identidades, vínculos, permissões, doses e regras sugeridas para o desenvolvimento.      |
+| [05 — Organização técnica](05-organizacao-tecnica.md)                               | Ferramentas, estrutura atual, organização do trabalho e responsabilidades a definir.     |
+| [06 — Estado atual](06-estado-atual.md)                                             | Interações implementadas, simulações, limitações e lacunas verificadas no código.        |
+| [07 — Planejamento e decisões](07-planejamento-e-decisoes.md)                       | Sequência de desenvolvimento sugerida, condições de entrega e decisões abertas.          |
+| [08 — Stack e arquitetura](08-stack-e-arquitetura.md)                               | Ferramentas aprovadas, decisões técnicas, modelo inicial e etapa em andamento.           |
+| [09 — Instalação e publicação](09-instalacao-e-publicacao.md)                       | Teste móvel, PWA, requisitos de HTTPS, Supabase remoto e notificações push.              |
+| [10 — Roteiro de testes de aceitação](10-roteiro-testes-aceitacao.md)               | Casos manuais para celular e navegador, resultados esperados e modelo de report.         |
+| [11 — Configuração do time e GitHub](11-configuracao-time-e-github.md)              | Dependências, Supabase local/remoto, segurança e fluxo de versionamento.                 |
+| [12 — Arquitetura baseada em componentes](12-arquitetura-baseada-em-componentes.md) | Componentes React, diagrama de componentes, conceitos aplicados e regras de evolução.    |
+| [13 — Validação dos padrões propostos](13-validacao-dos-padroes-propostos.md)       | Parecer sobre os problemas e padrões identificados nos documentos da equipe.             |
+| [14 — Refatoração com padrões e testes](14-refatoracao-padroes-e-testes.md)         | Responsabilidades, padrões aplicados, alterações realizadas e testes da refatoração.     |
 
 ## Como interpretar os documentos
 

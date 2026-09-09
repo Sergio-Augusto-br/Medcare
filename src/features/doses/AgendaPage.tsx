@@ -3,7 +3,7 @@ import { useState } from "react";
 import { usePatient } from "@/features/care/usePatient";
 import { userMessage } from "@/lib/errors";
 import DoseCard from "./DoseCard";
-import { fetchDoses, refreshOccurrences } from "./api";
+import { dailyRoutineFacade } from "./DailyRoutineFacade";
 import { dateInTimezone } from "./utils";
 
 export default function AgendaPage() {
@@ -16,10 +16,7 @@ export default function AgendaPage() {
   const doses = useQuery({
     queryKey: ["doses", patient?.id, date],
     enabled: Boolean(patient && date && canRead),
-    queryFn: async () => {
-      if (date >= today && can("manage")) await refreshOccurrences(patient!.id, date, date);
-      return fetchDoses(patient!.id, date);
-    },
+    queryFn: () => dailyRoutineFacade.loadDate(patient!.id, date, today, can("manage")),
   });
   const queryError = patientError ?? doses.error;
 

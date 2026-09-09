@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { QueryCacheMediator } from "@/app/QueryCacheMediator";
 import { FormNotice } from "@/features/auth/AuthLayout";
+import { PatientPermissionSpecification } from "@/features/care/PatientPermissionSpecification";
 import { usePatient } from "@/features/care/usePatient";
 import { userMessage } from "@/lib/errors";
-import type { DoseOccurrenceRow, DoseStatus } from "@/types";
-import { fetchDose, fetchDoseEvents, recordDose, type DoseEventRow } from "./api";
+import type { DoseStatus } from "@/types";
+import { fetchDose, fetchDoseEvents, recordDose } from "./api";
+import type { DoseEvent, DoseOccurrence } from "./model";
 import { doseDisplayStatus, doseStatusLabels } from "./utils";
 
 function localDateTime(date: Date) {
@@ -18,8 +21,8 @@ function DoseEditor({
   events,
   canRecord,
 }: {
-  dose: DoseOccurrenceRow;
-  events: DoseEventRow[];
+  dose: DoseOccurrence;
+  events: DoseEvent[];
   canRecord: boolean;
 }) {
   const navigate = useNavigate();
@@ -28,7 +31,7 @@ function DoseEditor({
     dose.status === "pending" ? "taken" : dose.status,
   );
   const [takenAt, setTakenAt] = useState(
-    localDateTime(dose.taken_at ? new Date(dose.taken_at) : new Date()),
+    localDateTime(dose.takenAt ? new Date(dose.takenAt) : new Date()),
   );
   const [reason, setReason] = useState(dose.reason);
   const requestId = useRef(crypto.randomUUID());
@@ -43,8 +46,7 @@ function DoseEditor({
         requestId.current,
       ),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["doses", dose.patient_id] });
-      await queryClient.invalidateQueries({ queryKey: ["dose-history", dose.patient_id] });
+      await new QueryCacheMediator(queryClient).doseChanged(dose.patientId, dose.id);
       navigate("/app", { replace: true, state: { message: "Dose registrada com sucesso." } });
     },
   });
@@ -59,28 +61,27 @@ function DoseEditor({
         <span className={`dose-live-status ${displayStatus}`}>
           {doseStatusLabels[displayStatus]}
         </span>
-        <h1>{dose.medication_snapshot.name}</h1>
+        <h1>{dose.medication.name}</h1>
         <p className="account-muted">
-          {dose.medication_snapshot.strength} {dose.medication_snapshot.unit} ·{" "}
-          {dose.medication_snapshot.quantity}
+          {dose.medication.strength} {dose.medication.unit} · {dose.medication.quantity}
         </p>
       </header>
       <section className="account-card dose-details-summary">
         <div>
           <span>Data prevista</span>
-          <strong>{format(new Date(`${dose.local_date}T12:00:00`), "dd/MM/yyyy")}</strong>
+          <strong>{format(new Date(`${dose.localDate}T12:00:00`), "dd/MM/yyyy")}</strong>
         </div>
         <div>
           <span>Horário previsto</span>
-          <strong>{dose.scheduled_time.slice(0, 5)}</strong>
+          <strong>{dose.scheduledTime.slice(0, 5)}</strong>
         </div>
         <div>
           <span>Fuso</span>
           <strong>{dose.timezone}</strong>
         </div>
       </section>
-      {dose.medication_snapshot.instructions && (
-        <p className="account-notice">{dose.medication_snapshot.instructions}</p>
+      {dose.medication.instructions && (
+        <p className="account-notice">{dose.medication.instructions}</p>
       )}
       <FormNotice message={mutation.error ? userMessage(mutation.error) : undefined} />
       {canRecord ? (
@@ -168,8 +169,8 @@ function DoseEditor({
               {doseStatusLabels[event.status]}
             </span>
             <div>
-              <strong>{event.actor_name}</strong>
-              <small>{format(new Date(event.created_at), "dd/MM/yyyy 'às' HH:mm")}</small>
+              <strong>{event.actorName}</strong>
+              <small>{format(new Date(event.createdAt), "dd/MM/yyyy 'às' HH:mm")}</small>
               {event.reason && <p>Motivo: {event.reason}</p>}
             </div>
           </article>
@@ -181,7 +182,8 @@ function DoseEditor({
 
 export default function DoseDetailsPage() {
   const { doseId } = useParams();
-  const { can } = usePatient();
+  const { patient, patients, selectPatient } = usePatient();
+  const permission = useMemo(() => new PatientPermissionSpecification(patients), [patients]);
   const dose = useQuery({
     queryKey: ["dose", doseId],
     enabled: Boolean(doseId),
@@ -192,10 +194,14 @@ export default function DoseDetailsPage() {
     enabled: Boolean(doseId),
     queryFn: () => fetchDoseEvents(doseId!),
   });
+  useEffect(() => {
+    if (dose.data && dose.data.patientId !== patient?.id) selectPatient(dose.data.patientId);
+  }, [dose.data, patient?.id, selectPatient]);
   if (dose.isPending || events.isPending) return <p className="account-notice">Carregando dose…</p>;
   if (dose.isError || events.isError)
     return <FormNotice message={userMessage(dose.error ?? events.error)} />;
-  return (
-    <DoseEditor dose={dose.data} events={events.data} canRecord={can("record") || can("manage")} />
-  );
+  const canRecord =
+    permission.isSatisfiedBy(dose.data.patientId, "record") ||
+    permission.isSatisfiedBy(dose.data.patientId, "manage");
+  return <DoseEditor dose={dose.data} events={events.data} canRecord={canRecord} />;
 }
